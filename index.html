@@ -1,0 +1,307 @@
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Анімація друкарського процесу — 1 оберт</title>
+<style>
+    body { 
+        font-family: Arial, sans-serif; 
+        margin: 0; 
+        padding: 15px; 
+        background: #f0f0f0; 
+        text-align: center; 
+    }
+    canvas { 
+        background: white; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
+        border-radius: 10px; 
+    }
+    h1 { margin: 10px 0 15px 0; }
+    #info {
+        margin-top: 10px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+    }
+</style>
+</head>
+<body>
+
+<h1>Анімація друкарського процесу: Принцип дисторсії друкарської форми</h1>
+<canvas id="canvas" width="1220" height="560"></canvas>
+
+<script>
+// ========================== ПАРАМЕТРИ ==========================
+const circumference = 5.0;
+const R = circumference / (2 * Math.PI);
+const numSegments = 36;
+const angleStep = 10.0;
+const plateWidthDeg = 10.0;
+const plateHeight = circumference / 20;
+
+const SCALE = 82;
+const groundY = 390;
+const rollDuration = 13000;
+const startOffset = 120;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const xCoordElement = document.getElementById('xcoord');
+
+const effectiveR = R + plateHeight;
+const maxRollX = 2 * Math.PI * effectiveR;
+
+let startTime = null;
+let currentStep = 0;
+let impressions = [];
+let lastPrintedStep = -1;
+// ========================== АНІМАЦІЯ ==========================
+function draw() {
+    const now = Date.now();
+    if (!startTime) startTime = now;
+    
+let elapsed = now - startTime;
+let progress = Math.min(elapsed / rollDuration, 1);
+
+// ---- ДИСКРЕТНІ КРОКИ ----
+const smoothStep =
+    progress * numSegments;
+
+// індекс кроку лишається
+currentStep =
+    Math.floor(smoothStep);
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+// плавний рух
+let x =
+    startOffset +
+    progress *
+    maxRollX *
+    SCALE;
+
+let angle =
+    progress *
+    2 *
+    Math.PI
+    -
+    Math.PI;
+
+    drawGround();
+    drawCylinder(x);
+    const arrowTipX = drawContactArrow(x, angle);
+    drawUnwrappedPlates();
+	
+    drawRectPlates(x, angle);
+    drawContactImpressions(x, angle);   // ← правильна логіка дотику
+
+ctx.fillStyle = 'black';
+ctx.font = 'bold 18px Arial';
+ctx.textAlign = 'center';
+
+ctx.fillText(
+    'Довжина відбитку відповідає зовнішній довжині вала з формою,',
+    canvas.width/2,
+    55
+);
+
+ctx.fillText(
+    'розмір форми відповідає зовнішній довжині вала з монтажною стрічкою',
+    canvas.width/2,
+    80
+);
+
+    requestAnimationFrame(draw);
+}
+
+// ======================= МАЛЮВАННЯ =======================
+function drawGround() {
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(40, groundY);
+    ctx.lineTo(canvas.width - 40, groundY);
+    ctx.stroke();
+}
+
+function drawCylinder(x) {
+    const cy = groundY - effectiveR * SCALE;
+    ctx.save();
+    ctx.translate(x, cy);
+    ctx.beginPath();
+    ctx.arc(0, 0, R * SCALE, 0, Math.PI * 2);
+    ctx.fillStyle = '#81d4fa';
+    ctx.fill();
+    ctx.strokeStyle = '#0277bd';
+    ctx.lineWidth = 7;
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawContactArrow(x, angle) {
+    const contactAngle = angle - Math.PI / 2;
+    const radius = R * SCALE * 0.68;
+
+    const sx = x + radius * Math.cos(contactAngle);
+    const sy = groundY - effectiveR * SCALE + radius * Math.sin(contactAngle);
+    const ex = x + (R * 0.95) * SCALE * Math.cos(contactAngle);
+    const ey = groundY - effectiveR * SCALE + (R * 0.95) * SCALE * Math.sin(contactAngle);
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+
+    const ha = Math.atan2(ey-sy, ex-sx);
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - 14*Math.cos(ha-0.4), ey - 14*Math.sin(ha-0.4));
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - 14*Math.cos(ha+0.4), ey - 14*Math.sin(ha+0.4));
+    ctx.stroke();
+
+    return ex;
+}
+
+function drawRectPlates(x, angle) {
+    const halfWidth = (plateWidthDeg / 2) * Math.PI / 180;
+    const thickness = plateHeight * SCALE;
+
+    for (let k = 0; k < numSegments; k++) {
+        const baseAngle = (k * angleStep) * Math.PI / 180 - Math.PI / 2;
+        const centerAngle = baseAngle + angle;
+
+        const cx = x + R * SCALE * Math.cos(centerAngle);
+        const cy = groundY - effectiveR * SCALE + R * SCALE * Math.sin(centerAngle);
+
+        const nx = Math.cos(centerAngle);
+        const ny = Math.sin(centerAngle);
+        const px = -ny;
+        const py = nx;
+
+        const hw = R * SCALE * halfWidth;
+
+        const p1x = cx - px * hw;
+        const p1y = cy - py * hw;
+        const p2x = cx + px * hw;
+        const p2y = cy + py * hw;
+
+        const p3x = p2x + nx * thickness;
+        const p3y = p2y + ny * thickness;
+        const p4x = p1x + nx * thickness;
+        const p4y = p1y + ny * thickness;
+
+        ctx.beginPath();
+        ctx.moveTo(p1x, p1y);
+        ctx.lineTo(p2x, p2y);
+        ctx.lineTo(p3x, p3y);
+        ctx.lineTo(p4x, p4y);
+        ctx.closePath();
+
+        ctx.fillStyle = '#e74c3c';
+        ctx.fill();
+    }
+}
+
+// === ВІДБИТОК ВІД КОЖНОГО ПРЯМОКУТНИКА ПРИ ДОТИКУ ===
+function drawContactImpressions(x, angle) {
+
+    const halfWidth =
+        (plateWidthDeg/2) *
+        Math.PI/180;
+
+    const k =
+        (numSegments-currentStep)%numSegments;
+
+    const baseAngle =
+        (k*angleStep)*
+        Math.PI/180
+        -Math.PI/2;
+
+    const centerAngle =
+        baseAngle+angle;
+
+    const a1=centerAngle-halfWidth;
+    const a2=centerAngle+halfWidth;
+
+    const leftX=
+        x+
+        effectiveR*SCALE*Math.cos(a1);
+
+    const rightX=
+        x+
+        effectiveR*SCALE*Math.cos(a2);
+
+    // друкуємо тільки коли перейшли на новий крок
+    if(currentStep!==lastPrintedStep){
+
+        impressions.push({
+            x1:leftX,
+            x2:rightX
+        });
+
+        lastPrintedStep=currentStep;
+    }
+
+    ctx.strokeStyle='#00ff00';
+    ctx.lineWidth=7;
+
+    const imprintY =
+        groundY+
+        ctx.lineWidth/2;
+
+    for(const p of impressions){
+
+        ctx.beginPath();
+        ctx.moveTo(
+            p.x1,
+            imprintY
+        );
+
+        ctx.lineTo(
+            p.x2,
+            imprintY
+        );
+
+        ctx.stroke();
+    }
+}
+
+function drawUnwrappedPlates() {
+
+    // показувати тільки після завершення друку
+    if(currentStep < numSegments) return;
+
+    const y = groundY + 90;
+
+    // реальна ширина сегмента
+    const segmentWidth =
+        R *
+        (plateWidthDeg*Math.PI/180)
+        * SCALE;
+
+    let x = startOffset;
+
+    for(let i=0;i<numSegments;i++){
+
+        ctx.fillStyle='#e74c3c';
+
+        ctx.fillRect(
+            x,
+            y,
+            segmentWidth,
+            plateHeight*SCALE
+        );
+
+        x += segmentWidth;
+    }
+}
+
+
+draw();
+</script>
+</body>
+</html>
