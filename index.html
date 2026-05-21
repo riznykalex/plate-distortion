@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -28,8 +27,9 @@
 </head>
 <body>
 
-<h1>Анімація друкарського процесу: Принцип дисторсії друкарської форми</h1>
-<canvas id="canvas" width="1220" height="560"></canvas>
+<h1>Анімація друкарського процесу: </h1>
+<h1>Принцип дисторсії друкарської форми</h1>
+<canvas id="canvas" width="640" height="560"></canvas>
 
 <script>
 // ========================== ПАРАМЕТРИ ==========================
@@ -43,7 +43,7 @@ const plateHeight = circumference / 20;
 const SCALE = 82;
 const groundY = 390;
 const rollDuration = 13000;
-const startOffset = 120;
+const startOffset = 60;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -97,17 +97,17 @@ let angle =
     drawContactImpressions(x, angle);   // ← правильна логіка дотику
 
 ctx.fillStyle = 'black';
-ctx.font = 'bold 18px Arial';
+ctx.font = 'bold 16px Arial';
 ctx.textAlign = 'center';
 
 ctx.fillText(
-    'Довжина відбитку відповідає зовнішній довжині вала разом з формою,',
+    'Довжина відбитку дорівнює зовнішній довжині вала разом із формою,',
     canvas.width/2,
     55
 );
 
 ctx.fillText(
-    'розмір форми відповідає зовнішній довжині вала з монтажною стрічкою',
+    'розмір форми дорівнює довжині кола вала з монтажною стрічкою.',
     canvas.width/2,
     80
 );
